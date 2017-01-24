@@ -941,11 +941,11 @@ function! s:ErlangCalcIndent2(lnum, stack)
           elseif stack[0] ==# '->'
             call s:Log('    LTI is in a branch; matching "fun" found')
             call s:Pop(stack)
-            let stored_vcol = curr_vcol + 2 * &sw
+            let stored_vcol = curr_vcol + &sw
           elseif stack[0] ==# 'when'
             call s:Log('    LTI is in a guard; matching "fun" found')
             call s:Pop(stack)
-            let stored_vcol = curr_vcol + 2 * &sw
+            let stored_vcol = curr_vcol + &sw
           endif
 
           let [ret, res] = s:BeginElementFound(stack, token, curr_vcol,
