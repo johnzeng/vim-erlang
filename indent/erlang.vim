@@ -4,7 +4,8 @@
 " Contributors: Edwin Fine <efine145_nospam01 at usa dot net>
 "               Pawel 'kTT' Salata <rockplayer.pl@gmail.com>
 "               Ricardo Catalinas Jiménez <jimenezrick@gmail.com>
-" Last Update:  2013-Jul-21
+"               Johnzeng <happy_zengda@126.com>
+" Last Update:  2017-Jan-25
 " License:      Vim license
 " URL:          https://github.com/hcs42/vim-erlang
 
@@ -62,58 +63,6 @@ endfunction
 " Indtokens are "indentation tokens".
 
 " Purpose:
-"   Calculate the new virtual column after the given segment of a line.
-" Parameters:
-"   line: string
-"   first_index: integer -- the index of the first character of the segment
-"   last_index: integer -- the index of the last character of the segment
-"   vcol: integer -- the virtual column of the first character of the token
-"   tabstop: integer -- the value of the 'tabstop' option to be used
-" Returns:
-"   vcol: integer
-" Example:
-"   " index:    0 12 34567
-"   " vcol:     0 45 89
-"   s:CalcVCol("\t'\tx', b", 1, 4, 4)  -> 10
-function! s:CalcVCol(line, first_index, last_index, vcol, tabstop)
-
-  " We copy the relevent segment of the line, otherwise if the line were
-  " e.g. `"\t", term` then the else branch below would consume the `", term`
-  " part at once.
-  let line = a:line[a:first_index : a:last_index]
-
-  let i = 0
-  let last_index = a:last_index - a:first_index
-  let vcol = a:vcol
-
-  while 0 <= i && i <= last_index
-
-    if line[i] ==# "\t"
-      " Example (when tabstop == 4):
-      "
-      " vcol + tab -> next_vcol
-      " 0 + tab -> 4
-      " 1 + tab -> 4
-      " 2 + tab -> 4
-      " 3 + tab -> 4
-      " 4 + tab -> 8
-      "
-      " next_i - i == the number of tabs
-      let next_i = matchend(line, '\t*', i + 1)
-      let vcol = (vcol / a:tabstop + (next_i - i)) * a:tabstop
-      call s:Log('new vcol after tab: '. vcol)
-    else
-      let next_i = matchend(line, '[^\t]*', i + 1)
-      let vcol += next_i - i
-      call s:Log('new vcol after other: '. vcol)
-    endif
-    let i = next_i
-  endwhile
-
-  return vcol
-endfunction
-
-" Purpose:
 "   Go through the whole line and return the tokens in the line.
 " Parameters:
 "   lnum: string -- the number of line to be examined
@@ -140,7 +89,6 @@ function! s:GetTokensFromLine(lnum, string_continuation, atom_continuation,
       call s:Log('    Whole line is string continuation -> ignore')
       return []
     else
-"      let vcol = s:CalcVCol(a:line, 0, i - 1, 0, a:tabstop)
       call add(indtokens, ['<string_end>', vcol, i])
     endif
   elseif a:atom_continuation
@@ -149,7 +97,6 @@ function! s:GetTokensFromLine(lnum, string_continuation, atom_continuation,
       call s:Log('    Whole line is quoted atom continuation -> ignore')
       return []
     else
-"      let vcol = s:CalcVCol(a:line, 0, i - 1, 0, a:tabstop)
       call add(indtokens, ['<quoted_atom_end>', vcol, i])
     endif
   endif
@@ -164,7 +111,6 @@ function! s:GetTokensFromLine(lnum, string_continuation, atom_continuation,
     elseif a:line[i] ==# "\t"
       let next_i = matchend(a:line, '\t*', i + 1)
 
-      " See example in s:CalcVCol
 
     " Comment
     elseif a:line[i] ==# '%'
@@ -947,13 +893,13 @@ function! s:ErlangCalcIndent2(lnum, stack)
       elseif token ==# '['
         " Emacs compatibility
         let [ret, res] = s:BeginElementFound(stack, token, curr_vcol,
-                                            \stored_vcol, ']', 1)
+                                            \stored_vcol, ']', &sw)
         if ret | return res | endif
 
       elseif token ==# '<<'
         " Emacs compatibility
         let [ret, res] = s:BeginElementFound(stack, token, curr_vcol,
-                                            \stored_vcol, '>>', 2)
+                                            \stored_vcol, '>>', &sw)
         if ret | return res | endif
 
       elseif token ==# '(' || token ==# '{'
@@ -1052,7 +998,7 @@ function! s:ErlangCalcIndent2(lnum, stack)
             " }}}
             call s:Log('    "' . token .
                       \'" token (which directly precedes LTI) found -> return')
-            return curr_vcol + 1
+            return curr_vcol + &sw
           else
             " Examples: {{{
             "
