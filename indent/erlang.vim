@@ -116,7 +116,7 @@ endfunction
 " Purpose:
 "   Go through the whole line and return the tokens in the line.
 " Parameters:
-"   line: string -- the line to be examined
+"   lnum: string -- the number of line to be examined
 "   string_continuation: bool
 "   atom_continuation: bool
 " Returns:
@@ -125,12 +125,13 @@ endfunction
 "   token = string (examples: 'begin', '<variable>', '}')
 "   vcol = integer (the virtual column of the first character of the token)
 "   col = integer
-function! s:GetTokensFromLine(line, string_continuation, atom_continuation,
+function! s:GetTokensFromLine(lnum, string_continuation, atom_continuation,
                              \tabstop)
 
+  let a:line = getline(a:lnum)
   let linelen = strlen(a:line) " The length of the line
   let i = 0 " The index of the current character in the line
-  let vcol = 0 " The virtual column of the current character
+  let vcol = indent(a:lnum) " The virtual column of the current character
   let indtokens = []
 
   if a:string_continuation
@@ -139,7 +140,7 @@ function! s:GetTokensFromLine(line, string_continuation, atom_continuation,
       call s:Log('    Whole line is string continuation -> ignore')
       return []
     else
-      let vcol = s:CalcVCol(a:line, 0, i - 1, 0, a:tabstop)
+"      let vcol = s:CalcVCol(a:line, 0, i - 1, 0, a:tabstop)
       call add(indtokens, ['<string_end>', vcol, i])
     endif
   elseif a:atom_continuation
@@ -148,14 +149,12 @@ function! s:GetTokensFromLine(line, string_continuation, atom_continuation,
       call s:Log('    Whole line is quoted atom continuation -> ignore')
       return []
     else
-      let vcol = s:CalcVCol(a:line, 0, i - 1, 0, a:tabstop)
+"      let vcol = s:CalcVCol(a:line, 0, i - 1, 0, a:tabstop)
       call add(indtokens, ['<quoted_atom_end>', vcol, i])
     endif
   endif
 
   while 0 <= i && i < linelen
-
-    let next_vcol = ''
 
     " Spaces
     if a:line[i] ==# ' '
@@ -166,7 +165,6 @@ function! s:GetTokensFromLine(line, string_continuation, atom_continuation,
       let next_i = matchend(a:line, '\t*', i + 1)
 
       " See example in s:CalcVCol
-      let next_vcol = (vcol / a:tabstop + (next_i - i)) * a:tabstop
 
     " Comment
     elseif a:line[i] ==# '%'
@@ -178,7 +176,6 @@ function! s:GetTokensFromLine(line, string_continuation, atom_continuation,
       if next_i ==# -1
         call add(indtokens, ['<string_start>', vcol, i])
       else
-        let next_vcol = s:CalcVCol(a:line, i, next_i - 1, vcol, a:tabstop)
         call add(indtokens, ['<string>', vcol, i])
       endif
 
@@ -188,7 +185,6 @@ function! s:GetTokensFromLine(line, string_continuation, atom_continuation,
       if next_i ==# -1
         call add(indtokens, ['<quoted_atom_start>', vcol, i])
       else
-        let next_vcol = s:CalcVCol(a:line, i, next_i - 1, vcol, a:tabstop)
         call add(indtokens, ['<quoted_atom>', vcol, i])
       endif
 
@@ -247,12 +243,6 @@ function! s:GetTokensFromLine(line, string_continuation, atom_continuation,
       call add(indtokens, [a:line[i], vcol, i])
       let next_i = i + 1
 
-    endif
-
-    if next_vcol ==# ''
-      let vcol += next_i - i
-    else
-      let vcol = next_vcol
     endif
 
     let i = next_i
@@ -367,10 +357,9 @@ function! s:TokenizeLine(lnum, direction)
   else
 
     " Parse the line
-    let line = getline(lnum)
     let string_continuation = s:IsLineStringContinuation(lnum)
     let atom_continuation = s:IsLineAtomContinuation(lnum)
-    let indtokens = s:GetTokensFromLine(line, string_continuation,
+    let indtokens = s:GetTokensFromLine(lnum, string_continuation,
                                        \atom_continuation, &tabstop)
     let s:all_tokens[lnum] = indtokens
     call s:Log('Tokenizing line ' . lnum . ': ' . line)
