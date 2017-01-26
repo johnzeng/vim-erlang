@@ -213,7 +213,9 @@ function! s:GetOTPSearchPath()
 
     let ret4 = ret3
     if exists("g:refactor_search_path")
-        let ret4 = s:GetOTPSearchPathHelper(ret4)
+        for path in ret4
+            let ret4 = s:GetOTPSearchPathHelper(ret4, path)
+        endfor
     endif
 
     return join(ret4, ",")

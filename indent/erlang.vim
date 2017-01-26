@@ -22,6 +22,11 @@
 " Initialization {{{1
 " ==============
 
+if exists("g:erlang_indent_style") && g:erlang_indent_style == "system"
+  """ if the indent style is system, don't load this script, load the default one
+  finish
+endif
+
 " Only load this indent file when no other was loaded
 " Vim 7 or later is needed
 if exists("b:did_indent") || version < 700
