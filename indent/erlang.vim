@@ -787,11 +787,11 @@ function! s:ErlangCalcIndent2(lnum, stack)
         if empty(stack) || stack == ['->', ';']
           call s:Log('    LTI is in a condition after ' .
                     \'"of/receive/after/if/catch" -> return')
-          return stored_vcol
+          return stored_vcol + &sw
         elseif stack == ['->']
           call s:Log('    LTI is in a branch after ' .
                     \'"of/receive/after/if/catch" -> return')
-          return stored_vcol + &sw
+          return stored_vcol + 2 * &sw
         elseif stack == ['when']
           call s:Log('    LTI is in a guard after ' .
                     \'"of/receive/after/if/catch" -> return')
