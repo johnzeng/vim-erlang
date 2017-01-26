@@ -275,7 +275,7 @@ function! s:ErlangRenameModule()
     call s:ErlangRename("mod")
 endfunction
 
-function! ErlangRenameProcess()
+function! s:ErlangRenameProcess()
     call s:ErlangRename("process")
 endfunction
 
@@ -328,4 +328,4 @@ vmap <leader>ae :call <SID>ErlangExtractFunction("v")<ENTER>
 map <leader>af :call <SID>ErlangRenameFunction()<ENTER>
 map <leader>av :call <SID>ErlangRenameVariable()<ENTER>
 map <leader>am :call <SID>ErlangRenameModule()<ENTER>
-map <leader>ap :call ErlangRenameProcess()<ENTER>
+map <leader>ap :call <SID>ErlangRenameProcess()<ENTER>

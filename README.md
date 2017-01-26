@@ -65,4 +65,17 @@ If you follow the OTP's file struct, this refactor plugin should work fine for y
 let g:refactor_search_path = ["source/path/to/search","another/source/path/to/search"]
 ```
 
+### key binding
+
+All of the refactoring features' key binding starts by `<leader>a`, 
+
+```
+<leader>ae extra function
+<leader>af rename function
+<leader>av rename variable
+<leader>at tuple function
+<leader>am rename module
+<leader>ap renmae process
+```
+
 
