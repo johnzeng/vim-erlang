@@ -39,7 +39,7 @@ setlocal indentexpr=JohnzengErlangIndent()
 setlocal indentkeys+=0=end,0=of,0=catch,0=after,0=when,0=),0=],0=},0=>>
 
 " Only define the functions once
-if exists("*ErlangIndent")
+if exists("*JohnzengErlangIndent")
   finish
 endif
 
@@ -48,9 +48,9 @@ set cpo&vim
 
 " Logging library {{{1
 " ===============
-"function! ErlangIndentLog(s)
-"  echom a:s
-"endfunction
+function! ErlangIndentLog(s)
+  echom a:s
+endfunction
 
 " Purpose:
 "   Logs the given string using the ErlangIndentLog function if it exists.
@@ -1258,7 +1258,7 @@ endfunction
 " =====================
 
 function! JohnzengErlangIndent()
-
+  call s:Log('indent begin')
   call s:ClearTokenCacheIfNeeded()
 
   let currline = getline(v:lnum)
