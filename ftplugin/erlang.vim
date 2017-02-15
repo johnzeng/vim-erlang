@@ -46,9 +46,9 @@ endfunction
 
 "uncomment the following codes if you wanna debug this script
 
-function! RefactorLogFunc(s)
-    echom a:s
-endfunction
+"function! RefactorLogFunc(s)
+"    echom a:s
+"endfunction
 
 function! s:Log(s)
     if exists("*RefactorLogFunc")
