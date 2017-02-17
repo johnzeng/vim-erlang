@@ -3,16 +3,19 @@
 " Maintainer: Pawel 'kTT' Salata <rockplayer.pl@gmail.com>
 " URL:        http://ktototaki.info
 
-if exists("b:did_ftplugin_erlang")
+if exists("b:did_ftplugin_erlang_refator")
     finish
 endif
 
 " Don't load any other
-let b:did_ftplugin_erlang=1
+let b:did_ftplugin_erlang_refator=1
 
-let g:erlangRefactoring=1
-if !exists('g:erlangRefactoring') || g:erlangRefactoring == 0
-    echom "not exist or equal to zero"
+if !exists('g:erlangRefactoring') 
+    let g:erlangRefactoring=1
+endif
+
+if g:erlangRefactoring == 0
+    echom "g:erlangRefactoring equal to zero"
     finish
 endif
 
@@ -29,12 +32,12 @@ endif
 "another problem is that, once a vi is exist, all other vim can not use it 
 "autocmd VimLeavePre * call StopWranglerServer()
 
-let s:erlangServerName = "wrangler_vim@localhost"
+let s:erlangServerName = "wrangler_vim@127.0.0.1"
 
 " Starting background erlang session with wrangler on
 function! StartWranglerServer()
     let wranglerEbinDir = g:erlangWranglerPath . "/ebin"
-    let command = "erl_call -s -name " . s:erlangServerName . " -x 'erl -pa " . wranglerEbinDir . "'"
+    let command = "erl -detached -name " . s:erlangServerName . " -pa " . wranglerEbinDir
     call system(command)
     call s:send_rpc('application', 'start', '[wrangler]')
 endfunction
