@@ -24,7 +24,7 @@ if !exists('g:erlangWranglerPath')
 endif
 
 if glob(g:erlangWranglerPath) == ""
-    call confirm("Wrong path to wrangler dir")
+    echom "Wrong path to wrangler dir"
     finish
 endif
 
