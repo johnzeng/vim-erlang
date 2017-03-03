@@ -194,7 +194,8 @@ function! s:call_rename(mode, line, col, name, search_path)
     if a:mode != "mod"
          let args = args . a:line . ', ' . a:col . ', '
     endif
-    let args = args . '"' . a:name . '", ["' . a:search_path . '"], emacs,' . &sw . ']'
+    let args = args . '"' . a:name . '", [' . a:search_path . '], emacs,' . &sw . ']'
+    echom args
     let result = s:send_rpc(module, fun, args)
     let [error_code, msg] = s:check_for_error(result)
     if error_code != 0
@@ -226,7 +227,7 @@ endfunction
 
 function! s:GetOTPSearchPathHelper(list, path)
     if isdirectory(a:path) 
-        return add(a:list, a:path) 
+        return add(a:list, '"'.a:path.'"') 
     else
         return a:list
     endif
@@ -287,7 +288,7 @@ function! s:call_tuple_fun_args(start_line, start_col, end_line, end_col, search
     let module = 'wrangler_refacs'
     let fun = 'tuple_funpar'
     call s:Log("search path is:".a:search_path)
-    let args = '["' . filename . '", [' . a:start_line . ', ' . a:start_col . '], [' . a:end_line . ', ' . a:end_col . '], ["' . a:search_path . '"], emacs ' . &sw . ']'
+    let args = '["' . filename . '", [' . a:start_line . ', ' . a:start_col . '], [' . a:end_line . ', ' . a:end_col . '], [' . a:search_path . '], emacs ' . &sw . ']'
     let result = s:send_rpc(module, fun, args)
     let [error_code, msg] = s:check_for_error(result)
     if error_code != 0
