@@ -195,7 +195,6 @@ function! s:call_rename(mode, line, col, name, search_path)
          let args = args . a:line . ', ' . a:col . ', '
     endif
     let args = args . '"' . a:name . '", [' . a:search_path . '], emacs,' . &sw . ']'
-    echom args
     let result = s:send_rpc(module, fun, args)
     let [error_code, msg] = s:check_for_error(result)
     if error_code != 0
