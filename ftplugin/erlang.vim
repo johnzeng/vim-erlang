@@ -3,12 +3,15 @@
 " Maintainer: Pawel 'kTT' Salata <rockplayer.pl@gmail.com>
 " URL:        http://ktototaki.info
 
-if exists("b:did_ftplugin_erlang_refator")
+if exists("s:did_ftplugin_erlang_refator")
     finish
 endif
 
+let s:diff_script = expand('<sfile>:p:h') . "/../scripts/diff.sh"
+let s:clean_script = expand('<sfile>:p:h') . "/../scripts/clean.sh"
+
 " Don't load any other
-let b:did_ftplugin_erlang_refator=1
+let s:did_ftplugin_erlang_refator=1
 
 if !exists('g:erlangRefactoring') 
     let g:erlangRefactoring=1
@@ -107,31 +110,55 @@ function! s:check_for_error(result)
         call s:Log(msg)
         return [2, msg]
     endif
-    return [-1, ""]
+    return [-1, a:result]
+endfunction
+
+" return 2 for confirm to commit, other things will be treated as abort
+function! s:confirm_after_preview(diff_output)
+    let lines = split(a:diff_output, '\n')
+    let counter = 0
+    for one_line in lines
+        echo one_line
+        let counter = counter + 1
+        if counter % 10 == 0
+            let choice = confirm("What do you want?", "Co&ntinue\n&Confirm\n&Abort", 0)
+            if choice != 1
+                return choice
+            endif
+        endif
+    endfor
+    if confirm("What do you want?", "&Confirm\n&Abort", 0) == 1
+        return 2
+    else
+        return 0
+    endif
 endfunction
 
 " Sending apply changes to file
-function! s:send_confirm()
-    let choice = confirm("What do you want?", "&Preview\n&Confirm\nCa&ncel", 0)
+function! s:send_confirm(msg)
+    let changed_files_str = matchstr(a:msg, "[^]]*", 1)
+    let changed_files = substitute(changed_files_str , ',', ' ', 'g')
+    let diff_command = s:diff_script.' '.changed_files
+    echo "These files will be changed: " . changed_files_str
+    let choice = confirm("What do you want?", "&Preview\n&Confirm\n&Abort", 0)
     if choice == 1
-        echo "TODO: Display preview :)"
-    elseif choice == 2
+        let diff_output = system(diff_command)
+        let choice = s:confirm_after_preview(diff_output)
+    endif
+    if choice == 2
         let module = 'wrangler_preview_server'
         let fun = 'commit'
         let args = '[]'
-        return s:send_rpc(module, fun, args)
+        call s:send_rpc(module, fun, args)
     else
         let module = 'wrangler_preview_server'
         let fun = 'abort'
         let args = '[]'
-        return s:send_rpc(module, fun, args)
-        echo "Canceled"
+        call s:send_rpc(module, fun, args)
     endif
-endfunction
-
-" Manually send confirm, for testing purpose only
-function! SendConfirm()
-    call s:send_confirm()
+    let clean_command = s:clean_script.' '.changed_files
+    call system(clean_command)
+    return choice
 endfunction
 
 " Format and send function extracton call
@@ -143,11 +170,11 @@ function! s:call_extract(start_line, start_col, end_line, end_col, name)
     let result = s:send_rpc(module, fun, args)
     let [error_code, msg] = s:check_for_error(result)
     if error_code != 0
-        call confirm(msg)
+        call confirm("error_cod:".error_cod."\nmsg:".msg)
         call s:Log("confirmed")
         return 0
     endif
-    call s:send_confirm()
+    call s:send_confirm(msg)
     return 1
 endfunction
 
@@ -198,13 +225,11 @@ function! s:call_rename(mode, line, col, name, search_path)
     let result = s:send_rpc(module, fun, args)
     let [error_code, msg] = s:check_for_error(result)
     if error_code != 0
-        call confirm(msg)
+        call confirm("error_code:".error_code."error happened:".msg)
         call s:Log("return after confirm")
         return 0
     endif
-    echo "This files will be changed: " . matchstr(msg, "[^]]*", 1)
-    call s:send_confirm()
-    return 1
+    return s:send_confirm(msg)
 endfunction
 
 function! s:GetOTPSearchPath()
@@ -248,12 +273,11 @@ function! s:ErlangRename(mode)
         let current_filename = expand("%")
         let current_filepath = expand("%:p")
         let rename_result = s:call_rename(a:mode, line, col, name, search_path)
-        if rename_result == 1
+        if rename_result == 1 || rename_result == 2
             if a:mode == "mod"
-                let new_filename = name . '.erl'
+                let new_filename = expand("%:h") . '/' . name . '.erl'
                 execute ':bd ' . current_filename
                 execute ':e ' . new_filename
-                silent execute '!mv ' . current_filepath . ' ' . current_filepath . '.bak'
                 redraw!
             else
                 execute ':e!'
@@ -293,7 +317,7 @@ function! s:call_tuple_fun_args(start_line, start_col, end_line, end_col, search
     if error_code != 0
         return 0
     endif
-    call s:send_confirm()
+    call s:send_confirm(msg)
     return 1
 endfunction
 
@@ -324,11 +348,12 @@ function! s:ErlangTupleFunArgs(mode)
 endfunction
 
 ""all mappings are here
-nmap <leader>at :call <SID>ErlangTupleFunArgs("n")<ENTER>
-vmap <leader>at :call <SID>ErlangTupleFunArgs("v")<ENTER>
-nmap <leader>ae :call <SID>ErlangExtractFunction("n")<ENTER>
-vmap <leader>ae :call <SID>ErlangExtractFunction("v")<ENTER>
-map <leader>af :call <SID>ErlangRenameFunction()<ENTER>
-map <leader>av :call <SID>ErlangRenameVariable()<ENTER>
-map <leader>am :call <SID>ErlangRenameModule()<ENTER>
-map <leader>ap :call <SID>ErlangRenameProcess()<ENTER>
+nmap <leader>au :call <SID>ErlangUndo()<CR>
+nmap <leader>at :call <SID>ErlangTupleFunArgs("n")<CR>
+vmap <leader>at :call <SID>ErlangTupleFunArgs("v")<CR>
+nmap <leader>ae :call <SID>ErlangExtractFunction("n")<CR>
+vmap <leader>ae :call <SID>ErlangExtractFunction("v")<CR>
+map <leader>af :call <SID>ErlangRenameFunction()<CR>
+map <leader>av :call <SID>ErlangRenameVariable()<CR>
+map <leader>am :call <SID>ErlangRenameModule()<CR>
+map <leader>ap :call <SID>ErlangRenameProcess()<CR>
