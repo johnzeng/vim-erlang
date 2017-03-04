@@ -77,9 +77,26 @@ function! s:send_rpc(module, fun, args)
     return result
 endfunction
 
-function! ErlangUndo()
+function! s:ErlangUndo()
     call s:send_rpc("wrangler_undo_server", "undo", "[]")
-    :e!
+    " how to get back to the old file for module rename???
+    if !empty(glob(expand("%")))
+        :e!
+    else
+        let cur_buf = bufname("%")
+        let last_buf = bufname("#")
+        if exists("s:last_old_file")
+            exec ':e '.s:last_old_file
+        elseif last_buf != cur_buf
+            "no last old file is found, but next buffer exists,jump to it
+            :bn
+        else
+            "ok, nothing is found, create a new one
+            :enew!
+        endif
+        "delete current buffer
+        exec ':bd ' . cur_buf
+    endif
 endfunction
 
 function! s:trim(text)
@@ -113,52 +130,68 @@ function! s:check_for_error(result)
     return [-1, a:result]
 endfunction
 
-" return 2 for confirm to commit, other things will be treated as abort
-function! s:confirm_after_preview(diff_output)
-    let lines = split(a:diff_output, '\n')
-    let counter = 0
-    for one_line in lines
-        echo one_line
-        let counter = counter + 1
-        if counter % 10 == 0
-            let choice = confirm("What do you want?", "Co&ntinue\n&Confirm\n&Abort", 0)
-            if choice != 1
-                return choice
-            endif
-        endif
-    endfor
-    if confirm("What do you want?", "&Confirm\n&Abort", 0) == 1
-        return 2
-    else
-        return 0
-    endif
-endfunction
-
 " Sending apply changes to file
-function! s:send_confirm(msg)
+function! s:send_confirm(msg, old_filename, new_filename)
     let changed_files_str = matchstr(a:msg, "[^]]*", 1)
     let changed_files = substitute(changed_files_str , ',', ' ', 'g')
-    let diff_command = s:diff_script.' '.changed_files
     echo "These files will be changed: " . changed_files_str
     let choice = confirm("What do you want?", "&Preview\n&Confirm\n&Abort", 0)
     if choice == 1
+        let diff_command = s:diff_script.' '.changed_files
         let diff_output = system(diff_command)
-        let choice = s:confirm_after_preview(diff_output)
+        execute ":vsp"
+        execute ":e .Erlang_Prevew_File"
+        set buftype=nofile
+        let lines = split(diff_output, '\n')
+        let counter = 0
+        for one_line in lines
+            call append(counter, one_line)
+            let counter = counter + 1
+        endfor
+        let b:msg = a:msg
+        let b:old_filename = a:old_filename
+        let b:new_filename = a:new_filename
+        au BufLeave <buffer> :call <SID>send_confirm_from_preview()
+        return 0
     endif
     if choice == 2
         let module = 'wrangler_preview_server'
         let fun = 'commit'
         let args = '[]'
         call s:send_rpc(module, fun, args)
+        call s:clean_up_fun(a:msg, a:old_filename, a:new_filename)
     else
         let module = 'wrangler_preview_server'
         let fun = 'abort'
         let args = '[]'
         call s:send_rpc(module, fun, args)
     endif
+    return choice
+endfunction
+
+function! s:send_confirm_from_preview()
+    let a:msg = b:msg
+    let a:old_filename = b:old_filename
+    let a:new_filename = b:new_filename
+    execute ":bd"
+    call s:send_confirm(a:msg, a:old_filename, a:new_filename)
+endfunction
+
+function! s:clean_up_fun(msg, old_file, new_file)
+    let s:last_old_file = a:old_file
+    let changed_files_str = matchstr(a:msg, "[^]]*", 1)
+    let changed_files = substitute(changed_files_str , ',', ' ', 'g')
+    if a:new_file != ""
+        execute ':bd ' . a:old_file 
+        execute ':e! ' . a:new_file
+        "this is a tricky fix for mod rename backed from preview mode
+        set filetype=erlang
+        execute ':silent! rm ' .a:old_file 
+    else
+        execute ':e! ' . a:old_file
+    endif
     let clean_command = s:clean_script.' '.changed_files
     call system(clean_command)
-    return choice
 endfunction
 
 " Format and send function extracton call
@@ -174,7 +207,9 @@ function! s:call_extract(start_line, start_col, end_line, end_col, name)
         call s:Log("confirmed")
         return 0
     endif
-    call s:send_confirm(msg)
+    let old_filename = expand("%")
+    let new_filename = expand("%")
+    call s:send_confirm(msg, old_filename, new_filename)
     return 1
 endfunction
 
@@ -218,8 +253,12 @@ function! s:call_rename(mode, line, col, name, search_path)
     let module = 'wrangler_refacs'
     let fun = 'rename_' . a:mode
     let args = '["' . file .'", '
+    let old_filename = expand("%")
     if a:mode != "mod"
-         let args = args . a:line . ', ' . a:col . ', '
+        let new_filename = ""
+        let args = args . a:line . ', ' . a:col . ', '
+    else
+        let new_filename = expand("%:h") . '/' . a:name . '.erl'
     endif
     let args = args . '"' . a:name . '", [' . a:search_path . '], emacs,' . &sw . ']'
     let result = s:send_rpc(module, fun, args)
@@ -229,7 +268,7 @@ function! s:call_rename(mode, line, col, name, search_path)
         call s:Log("return after confirm")
         return 0
     endif
-    return s:send_confirm(msg)
+    return s:send_confirm(msg, old_filename, new_filename)
 endfunction
 
 function! s:GetOTPSearchPath()
@@ -272,17 +311,7 @@ function! s:ErlangRename(mode)
         let col = pos[2]
         let current_filename = expand("%")
         let current_filepath = expand("%:p")
-        let rename_result = s:call_rename(a:mode, line, col, name, search_path)
-        if rename_result == 1 || rename_result == 2
-            if a:mode == "mod"
-                let new_filename = expand("%:h") . '/' . name . '.erl'
-                execute ':bd ' . current_filename
-                execute ':e ' . new_filename
-                redraw!
-            else
-                execute ':e!'
-            endif
-        endif
+        call s:call_rename(a:mode, line, col, name, search_path)
     else
         echo "Empty name. Ignoring."
     endif
@@ -317,7 +346,9 @@ function! s:call_tuple_fun_args(start_line, start_col, end_line, end_col, search
     if error_code != 0
         return 0
     endif
-    call s:send_confirm(msg)
+    let old_filename = expand("%")
+    let new_filename = expand("%")
+    call s:send_confirm(msg, old_filename, new_filename)
     return 1
 endfunction
 
@@ -332,16 +363,12 @@ function! s:ErlangTupleFunArgs(mode)
         let end_pos = getpos("'>")
         let end_line = end_pos[1]
         let end_col = end_pos[2]
-        if s:call_tuple_fun_args(start_line, start_col, end_line, end_col, search_path)
-            :e
-        endif
+        call s:call_tuple_fun_args(start_line, start_col, end_line, end_col, search_path)
     elseif a:mode == "n"
         let pos = getpos(".")
         let line = pos[1]
         let col = pos[2]
-        if s:call_tuple_fun_args(line, col, line, col, search_path)
-            :e
-        endif
+        call s:call_tuple_fun_args(line, col, line, col, search_path)
     else
         echo "Mode not supported."
     endif
