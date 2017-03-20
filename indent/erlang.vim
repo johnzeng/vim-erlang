@@ -48,9 +48,9 @@ set cpo&vim
 
 " Logging library {{{1
 " ===============
-function! ErlangIndentLog(s)
-  echom a:s
-endfunction
+"function! ErlangIndentLog(s)
+"  echom a:s
+"endfunction
 
 " Purpose:
 "   Logs the given string using the ErlangIndentLog function if it exists.
