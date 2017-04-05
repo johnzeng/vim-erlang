@@ -159,13 +159,13 @@ function! s:send_confirm(msg, old_filename, new_filename)
         let fun = 'commit'
         let args = '[]'
         call s:send_rpc(module, fun, args)
-        call s:clean_up_fun(a:msg, a:old_filename, a:new_filename)
     else
         let module = 'wrangler_preview_server'
         let fun = 'abort'
         let args = '[]'
         call s:send_rpc(module, fun, args)
     endif
+    call s:clean_up_fun(a:msg, a:old_filename, a:new_filename)
     return choice
 endfunction
 
