@@ -203,7 +203,7 @@ function! s:call_extract(start_line, start_col, end_line, end_col, name)
     let result = s:send_rpc(module, fun, args)
     let [error_code, msg] = s:check_for_error(result)
     if error_code != 0
-        call confirm("error_cod:".error_cod."\nmsg:".msg)
+        call confirm("error_cod:".error_code."\nmsg:".msg)
         call s:Log("confirmed")
         return 0
     endif
