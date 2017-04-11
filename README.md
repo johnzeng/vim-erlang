@@ -7,7 +7,8 @@ This plugin include the following feature:
 
 The indent plugin is shipped by vim, I just do some modify on it to meet my requirement.
 
-The refactoring plugin is mostly copied from [ oscarh/vimerl ]( https://github.com/oscarh/vimerl )
+The refactoring plugin is refacored from [ oscarh/vimerl ]( https://github.com/oscarh/vimerl ) , the original repo is not maintaining and so that repo is not working for the newest wrangler.
+
 ## indent style
 
 instead of the default vi indent setting, this plugin use the following indent style:
@@ -32,7 +33,6 @@ let g:erlang_indent_style="system"
 
 ## refactor tips:
 
-- make sure `localhost` is pointing to your pc , so the erlang rpc can be sent correctly
 - make sure you have set up the wrangler right
 - make sure you have `erl_call` under your working $PATH (if you use brew to install erlang on mac, you will have to find and add it by yourself)
 
