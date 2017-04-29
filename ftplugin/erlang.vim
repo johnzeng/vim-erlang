@@ -196,6 +196,7 @@ endfunction
 
 " Format and send function extracton call
 function! s:call_extract(start_line, start_col, end_line, end_col, name)
+    normal mA
     let file = expand("%:p")
     let module = 'wrangler_refacs'
     let fun = 'fun_extraction'
@@ -210,6 +211,7 @@ function! s:call_extract(start_line, start_col, end_line, end_col, name)
     let old_filename = expand("%")
     let new_filename = expand("%")
     call s:send_confirm(msg, old_filename, new_filename)
+    normal `A
     return 1
 endfunction
 
